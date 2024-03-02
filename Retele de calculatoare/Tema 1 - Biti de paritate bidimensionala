@@ -51,9 +51,14 @@ public:
 
 	//constructor
 public:
-	bitParity2D(std::string path)
-		:path(path) {
-		readFromFile();
+	bitParity2D(std::string str) {
+		if (isValidMessage(str)) {
+			this->message = str;
+		}
+		else {
+			this->path = str;
+			readFromFile();
+		}
 		this->matrix = generateMatrix(this->message);
 		corruptMessage();
 		this->corruptedMatrix = generateMatrix(this->corruptedMessage);
@@ -71,7 +76,7 @@ private:
 		}
 		std::cout << "Fisier deschis cu succes." << "\n" << std::endl;
 		file.close();
-		if (!isValidMessage()) {
+		if (!isValidMessage(this->message)) {
 			std::cerr << "Eroare: Mesaj invalid!" << std::endl;
 			exit(1);
 		}
@@ -79,7 +84,7 @@ private:
 
 	//metoda pentru verificarea corectitudinii mesajului
 private:
-	bool isValidMessage() {
+	bool isValidMessage(std::string message) {
 		//verificare daca numarul de caractere este multiplu de 7
 		if (message.length() % 7 != 0 && message.length() != 0) {
 			std::cout << "Lungime mesaj invalida!" << std::endl;
@@ -148,7 +153,6 @@ public:
 	//metoda pentru afisarea matricei
 public:
 	void printMatrix(short** matrix) {
-		std::cout << "Matricea de paritate rezultata: " << std::endl;
 		for (int i = 0; i < lines; i++) {
 			if (i == lines - 1)
 				std::cout << "- - - - - - - - -" << std::endl;
@@ -161,7 +165,7 @@ public:
 			std::cout << std::endl;
 		}
 	}
-private:
+public:
 	void findCorruptedPosition() {
 		//gasirea pozitiei bitului corupt pe linie
 		for (int i = 0; i < lines - 1; i++)
@@ -201,7 +205,7 @@ public:
 };
 
 int main() {
-	std::cout << "Citire mesaj corupt de la tastatura(1) sau fisier(2)?\n";
+	std::cout << "Citire mesaj corupt de la tastatura(1) sau fisier(Default)?\n";
 	int option;
 	std::cin >> option;
 	std::string str;
@@ -210,19 +214,18 @@ int main() {
 		std::cout << "Introduceti mesajul: ";
 		std::cin >> str;
 		break;
-	case 2:
-		std::cout << "Introduceti calea fisierului: ";
-		std::cin >> str;
-		break;
 	default:
-		str = "Test.txt";
+		str = "G:/My Drive/Mate info ID/An II/Semestrul II/Retele de calculatoare/Tema 1/Test.txt";
 		break;
 	}
 	bitParity2D obj(str);
+	std::cout << "Matricea de paritate:\n";
 	obj.printMatrix(obj.getMatrix());
 	std::cout << std::endl;
+	std::cout << "Mesajul corupt:\n";
 	obj.printMessage(obj.getCorruptedMessage());
 	std::cout << std::endl;
+	std::cout << "Matricea de paritate a mesajului corupt:\n";
 	obj.printMatrix(obj.getCorruptedMatrix());
 	std::cout << std::endl;
 	std::pair <int, int> corruptedPosition = obj.getCorruptedPosition();
@@ -230,3 +233,4 @@ int main() {
 
 	return 0;
 }
+
