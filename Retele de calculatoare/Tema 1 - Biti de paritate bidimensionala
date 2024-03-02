@@ -1,0 +1,166 @@
+// 1. Biti de paritate bidimensionala
+//
+//Se introduce un sir format dintr - un numar multiplu de 7 caractere binare(Se vor face verificari in acest sens).
+//Mesajul transformat astfel va fi pozitionat intr - o matrice cu 7 coloane si numar de linii variabil(in functie de lungimea mesajului introdus).
+//Se vor calcula bitii de paritate pe fiecare linie si fiecare coloana astfel(pentru un numar par de 1 pe o linie/coloana
+//atunci se va adauga un 0 pe ultima coloana / linie, iar pentru un numar impar de 1 se va adauga un 1).
+//Bitul semnificativ este bitul din coltul dreapta - jos al matricii.
+//Se va afisa matricea rezultata.
+//Se va simula coruperea mesajului prin generarea aleatoare a unei pozitii a unui caracter
+//binar al mesajului.In functie de pozitia generata, se va modifica bitul de pe acea pozitie.
+//Destinatia va reface calculul bitilor de paritate bidimensionala si va identifica bitul corupt.
+//Destinatia va afisa apoi pozitia corupta.
+
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <ctime>
+
+#define col 8
+
+class bitParity2D {
+private:
+	std::string message;
+	std::string badMessage;
+	std::string path;
+	int lines;
+	short** matrix = nullptr;
+	short** badMatrix = nullptr;
+
+public:
+	std::string getMessage() {
+		return message;
+	}
+	std::string getPath() {
+		return path;
+	}
+	std::string getBadMessage() {
+		return badMessage;
+	}
+
+public: 
+	bitParity2D(std::string path)
+	:path(path) {
+
+	std::ifstream file(path);
+	std::getline(file, this->message);
+	if (!file.is_open()) {
+		std::cerr << "Eroare: Fisierul nu a putut fi deschis!" << std::endl;
+		exit(1);
+	}
+	std::cout << "Fisier deschis cu succes." << "\n" << std::endl;
+	file.close();
+	generateMatrix();
+	corruptMessage();
+}
+
+private: 
+	bool isValidMessage() {
+	//verificare daca numarul de caractere este multiplu de 7
+	if (message.length() % 7 != 0 && message.length() != 0) {
+		std::cout << "Lungime mesaj invalida!" << std::endl;
+		return false;
+	}
+
+	else
+		//verificare daca mesajul contine doar 0 si 1
+		for (char c : message) {
+			if (c != '0' && c != '1') {
+				std::cout << "Continut caractere nepermise!" << std::endl;
+				return false;
+			}
+		}
+	return true;
+}
+
+private: 
+	void generateMatrix() {
+	//verificare mesaj valid
+	if (!isValidMessage()) {
+		std::cerr << "Eroare: Mesaj invalid!" << std::endl;
+		exit(1);
+	}
+
+	this->lines = message.length() / 7 + 1;
+	matrix = new short* [lines];
+	for (int i = 0; i < lines; i++)
+		matrix[i] = new short[col];
+
+	//initializarea ultimului rand din matrice cu 0
+	for (int i = 0; i < col; i++) {
+		matrix[lines - 1][i] = 0;
+		//std::cout<< matrix[lines - 1][i] << " ";
+	}
+
+	//generarea matricei si a bitilor de paritate
+	for (int i = 0; i < lines - 1; i++) {
+		//calcularea paritatii pe linie
+		int lineParity = 0;
+		for (int j = 0; j < 7; j++) {
+			matrix[i][j] = (int)(message[i * 7 + j] - 48);
+			matrix[lines - 1][j] ^= matrix[i][j];
+			lineParity ^= matrix[i][j];
+		}
+		matrix[i][7] = lineParity;
+	}
+
+	//calcularea paritatii pe coloana
+	for (int i = 0; i < 7; i++)
+		matrix[lines - 1][7] ^= matrix[lines - 1][i];
+}
+
+public: 
+	void corruptMessage() {
+	// generare pozitie aleatoare
+	//seeding random number generator
+	badMessage = message;
+	srand(time(0));
+	int position = rand() % badMessage.length();
+
+	// inlocuire bit la pozitia generata
+	badMessage[position] = (badMessage[position] == '0') ? '1' : '0';
+}
+
+public: 
+	void printMatrix() {
+	std::cout << "Matricea de paritate rezultata: " << std::endl;
+	for (int i = 0; i < lines; i++) {
+		if (i == lines - 1)
+			std::cout << "- - - - - - - - -" << std::endl;
+		for (int j = 0; j < col; j++) {
+			if (j < 7)
+				std::cout << matrix[i][j] << " ";
+			else
+				std::cout << "| " << matrix[i][j];
+		}
+		std::cout << std::endl;
+	}
+}
+
+	  //destructor
+	  ~bitParity2D() {
+		  //std::cout << std::endl << "Destructor called" << std::endl;
+		  for (int i = 0; i < lines; i++)
+			  delete[] matrix[i];
+		  delete[] matrix;
+	  }
+};
+
+void printMessage(std::string message) {
+	for (int i = 0; i < message.length(); i++) {
+		std::cout << message[i] << " ";
+		if ((i + 1) % 7 == 0 && i < message.length() - 1)
+			std::cout << ". ";
+	}
+	std::cout << "\n";
+}
+
+int main() {
+	std::cout << "";
+	std::string str = "G:/My Drive/Mate info ID/An II/Semestrul II/Retele de calculatoare/Tema 1/Test.txt";
+	bitParity2D obj(str);
+	obj.printMatrix();
+	printMessage(obj.getMessage());
+	printMessage(obj.getBadMessage());
+	return 0;
+}
