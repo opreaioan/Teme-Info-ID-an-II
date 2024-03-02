@@ -21,146 +21,212 @@
 class bitParity2D {
 private:
 	std::string message;
-	std::string badMessage;
+	std::string corruptedMessage;
 	std::string path;
 	int lines;
 	short** matrix = nullptr;
-	short** badMatrix = nullptr;
+	short** corruptedMatrix = nullptr;
+	std::pair <int, int> corruptedPosition;
 
+	//getteri pentru a accesa atributele private
 public:
 	std::string getMessage() {
 		return message;
 	}
+	std::string getCorruptedMessage() {
+		return corruptedMessage;
+	}
 	std::string getPath() {
 		return path;
 	}
-	std::string getBadMessage() {
-		return badMessage;
+	short** getMatrix() {
+		return matrix;
+	}
+	short** getCorruptedMatrix() {
+		return corruptedMatrix;
+	}
+	std::pair <int, int> getCorruptedPosition() {
+		return corruptedPosition;
 	}
 
-public: 
+	//constructor
+public:
 	bitParity2D(std::string path)
-	:path(path) {
-
-	std::ifstream file(path);
-	std::getline(file, this->message);
-	if (!file.is_open()) {
-		std::cerr << "Eroare: Fisierul nu a putut fi deschis!" << std::endl;
-		exit(1);
+		:path(path) {
+		readFromFile();
+		this->matrix = generateMatrix(this->message);
+		corruptMessage();
+		this->corruptedMatrix = generateMatrix(this->corruptedMessage);
+		findCorruptedPosition();
 	}
-	std::cout << "Fisier deschis cu succes." << "\n" << std::endl;
-	file.close();
-	generateMatrix();
-	corruptMessage();
-}
 
-private: 
+	//metoda pentru citirea din fisier
+private:
+	void readFromFile() {
+		std::ifstream file(path);
+		std::getline(file, this->message);
+		if (!file.is_open()) {
+			std::cerr << "Eroare: Fisierul nu a putut fi deschis!" << std::endl;
+			exit(1);
+		}
+		std::cout << "Fisier deschis cu succes." << "\n" << std::endl;
+		file.close();
+		if (!isValidMessage()) {
+			std::cerr << "Eroare: Mesaj invalid!" << std::endl;
+			exit(1);
+		}
+	}
+
+	//metoda pentru verificarea corectitudinii mesajului
+private:
 	bool isValidMessage() {
-	//verificare daca numarul de caractere este multiplu de 7
-	if (message.length() % 7 != 0 && message.length() != 0) {
-		std::cout << "Lungime mesaj invalida!" << std::endl;
-		return false;
-	}
+		//verificare daca numarul de caractere este multiplu de 7
+		if (message.length() % 7 != 0 && message.length() != 0) {
+			std::cout << "Lungime mesaj invalida!" << std::endl;
+			return false;
+		}
 
-	else
-		//verificare daca mesajul contine doar 0 si 1
-		for (char c : message) {
-			if (c != '0' && c != '1') {
-				std::cout << "Continut caractere nepermise!" << std::endl;
-				return false;
+		else
+			//verificare daca mesajul contine doar 0 si 1
+			for (char c : message) {
+				if (c != '0' && c != '1') {
+					std::cout << "Continut caractere nepermise!" << std::endl;
+					return false;
+				}
 			}
+		return true;
+	}
+
+	//metoda pentru generarea matricei de paritate
+private:
+	short** generateMatrix(std::string message) {
+		//verificare mesaj valid
+		short** matrix;
+
+		this->lines = message.length() / 7 + 1;
+		matrix = new short* [lines];
+		for (int i = 0; i < lines; i++)
+			matrix[i] = new short[col];
+
+		//initializarea ultimului rand din matrice cu 0
+		for (int i = 0; i < col; i++) {
+			matrix[lines - 1][i] = 0;
+			//std::cout<< matrix[lines - 1][i] << " ";
 		}
-	return true;
-}
 
-private: 
-	void generateMatrix() {
-	//verificare mesaj valid
-	if (!isValidMessage()) {
-		std::cerr << "Eroare: Mesaj invalid!" << std::endl;
-		exit(1);
-	}
-
-	this->lines = message.length() / 7 + 1;
-	matrix = new short* [lines];
-	for (int i = 0; i < lines; i++)
-		matrix[i] = new short[col];
-
-	//initializarea ultimului rand din matrice cu 0
-	for (int i = 0; i < col; i++) {
-		matrix[lines - 1][i] = 0;
-		//std::cout<< matrix[lines - 1][i] << " ";
-	}
-
-	//generarea matricei si a bitilor de paritate
-	for (int i = 0; i < lines - 1; i++) {
-		//calcularea paritatii pe linie
-		int lineParity = 0;
-		for (int j = 0; j < 7; j++) {
-			matrix[i][j] = (int)(message[i * 7 + j] - 48);
-			matrix[lines - 1][j] ^= matrix[i][j];
-			lineParity ^= matrix[i][j];
+		//generarea matricei si a bitilor de paritate
+		for (int i = 0; i < lines - 1; i++) {
+			//calcularea paritatii pe linie
+			int lineParity = 0;
+			for (int j = 0; j < 7; j++) {
+				matrix[i][j] = (int)(message[i * 7 + j] - 48);
+				matrix[lines - 1][j] ^= matrix[i][j];
+				lineParity ^= matrix[i][j];
+			}
+			matrix[i][7] = lineParity;
 		}
-		matrix[i][7] = lineParity;
+
+		//calcularea paritatii pe coloana
+		for (int i = 0; i < 7; i++)
+			matrix[lines - 1][7] ^= matrix[lines - 1][i];
+		return matrix;
 	}
 
-	//calcularea paritatii pe coloana
-	for (int i = 0; i < 7; i++)
-		matrix[lines - 1][7] ^= matrix[lines - 1][i];
-}
-
-public: 
+	//metoda pentru coruperea mesajului
+public:
 	void corruptMessage() {
-	// generare pozitie aleatoare
-	//seeding random number generator
-	badMessage = message;
-	srand(time(0));
-	int position = rand() % badMessage.length();
+		// generare pozitie aleatoare
+		//seeding random number generator
+		corruptedMessage = message;
+		srand(time(0));
+		int position = rand() % corruptedMessage.length();
 
-	// inlocuire bit la pozitia generata
-	badMessage[position] = (badMessage[position] == '0') ? '1' : '0';
-}
-
-public: 
-	void printMatrix() {
-	std::cout << "Matricea de paritate rezultata: " << std::endl;
-	for (int i = 0; i < lines; i++) {
-		if (i == lines - 1)
-			std::cout << "- - - - - - - - -" << std::endl;
-		for (int j = 0; j < col; j++) {
-			if (j < 7)
-				std::cout << matrix[i][j] << " ";
-			else
-				std::cout << "| " << matrix[i][j];
-		}
-		std::cout << std::endl;
+		// inlocuire bit la pozitia generata
+		corruptedMessage[position] = (corruptedMessage[position] == '0') ? '1' : '0';
 	}
-}
 
-	  //destructor
-	  ~bitParity2D() {
-		  //std::cout << std::endl << "Destructor called" << std::endl;
-		  for (int i = 0; i < lines; i++)
-			  delete[] matrix[i];
-		  delete[] matrix;
-	  }
+	//metoda pentru afisarea matricei
+public:
+	void printMatrix(short** matrix) {
+		std::cout << "Matricea de paritate rezultata: " << std::endl;
+		for (int i = 0; i < lines; i++) {
+			if (i == lines - 1)
+				std::cout << "- - - - - - - - -" << std::endl;
+			for (int j = 0; j < col; j++) {
+				if (j < 7)
+					std::cout << matrix[i][j] << " ";
+				else
+					std::cout << "| " << matrix[i][j];
+			}
+			std::cout << std::endl;
+		}
+	}
+private:
+	void findCorruptedPosition() {
+		//gasirea pozitiei bitului corupt pe linie
+		for (int i = 0; i < lines - 1; i++)
+			if (matrix[i][7] != corruptedMatrix[i][7]) {
+				corruptedPosition.first = i + 1;
+				break;
+			}
+		//gasirea pozitiei bitului corupt pe coloana
+		for (int i = 0; i < 7; i++)
+			if (matrix[lines - 1][i] != corruptedMatrix[lines - 1][i]) {
+				corruptedPosition.second = i + 1;
+				break;
+			}
+	}
+
+	//metoda pentru afisarea mesajului corupt
+public:
+	void printMessage(std::string message) {
+		for (int i = 0; i < message.length(); i++) {
+			std::cout << message[i] << " ";
+			if ((i + 1) % 7 == 0 && i < message.length() - 1)
+				std::cout << ". ";
+		}
+		std::cout << "\n";
+	}
+
+	//destructor pentru eliberarea memoriei alocate dinamic
+	~bitParity2D() {
+		//std::cout << std::endl << "Destructor called" << std::endl;
+		for (int i = 0; i < lines; i++) {
+			delete[] matrix[i];
+			delete[] corruptedMatrix[i];
+		}
+		delete[] matrix;
+		delete[] corruptedMatrix;
+	}
 };
 
-void printMessage(std::string message) {
-	for (int i = 0; i < message.length(); i++) {
-		std::cout << message[i] << " ";
-		if ((i + 1) % 7 == 0 && i < message.length() - 1)
-			std::cout << ". ";
-	}
-	std::cout << "\n";
-}
-
 int main() {
-	std::cout << "";
-	std::string str = "G:/My Drive/Mate info ID/An II/Semestrul II/Retele de calculatoare/Tema 1/Test.txt";
+	std::cout << "Citire mesaj corupt de la tastatura(1) sau fisier(2)?\n";
+	int option;
+	std::cin >> option;
+	std::string str;
+	switch (option) {
+	case 1:
+		std::cout << "Introduceti mesajul: ";
+		std::cin >> str;
+		break;
+	case 2:
+		std::cout << "Introduceti calea fisierului: ";
+		std::cin >> str;
+		break;
+	default:
+		str = "Test.txt";
+		break;
+	}
 	bitParity2D obj(str);
-	obj.printMatrix();
-	printMessage(obj.getMessage());
-	printMessage(obj.getBadMessage());
+	obj.printMatrix(obj.getMatrix());
+	std::cout << std::endl;
+	obj.printMessage(obj.getCorruptedMessage());
+	std::cout << std::endl;
+	obj.printMatrix(obj.getCorruptedMatrix());
+	std::cout << std::endl;
+	std::pair <int, int> corruptedPosition = obj.getCorruptedPosition();
+	std::cout << "Pozitia bitului corupt:\n" << "linia: " << corruptedPosition.first << " coloana:" << corruptedPosition.second;
+
 	return 0;
 }
